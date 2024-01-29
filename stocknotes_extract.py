@@ -3,7 +3,7 @@ import re
 import logging
 
 
-FII_PATTERN = '\w{4}11'
+TICKER_PATTERN = '\w{4}11|\w{4}[34]{1}[F]?'
 DATE_PATTERN = '(\d{2}\/\d{2}\/20\d{2})'
 # VALUE_PATTERN = '^[1-9]\d+,\d{2}$' => does not work for values below 10,00
 # VALUE_PATTERN = '\d+,\d{2}$'
@@ -15,11 +15,15 @@ VALUE_PATTERN = '^[1-9]\d*,\d{2}$'
 # 1
 QUANTITY_PATTERN = '^(?!0$)(\d{1,2}(?: \d{1,2})*)$'
 TAX_PATTERN = '(^\d{1},\d{2})\sD'
-OPERATION_PATTERN = '1-BOVESPA (\w) VISTA'
+# OPERATION_PATTERN = '1-BOVESPA (\w) VISTA'
+OPERATION_PATTERN = '1-BOVESPA (\w).*'
 
 logging.basicConfig(format='%(asctime)s - %(message)s', level=logging.INFO)
 
 class Btg:
+
+    ACCOUNT_1 = '002320286'
+    ACCOUNT_2 = '004699022'
 
     structured_data = {}
     fii_names = []
@@ -53,8 +57,9 @@ class Btg:
                 process_values = True
                 current_pattern = None
                 continue
-            if re.match(FII_PATTERN, line):
+            if re.match(TICKER_PATTERN, line):
                 logging.debug(line)
+                # TODO: for FII ok to get line, but stocks don't, i.e. BBAS3F ON
                 data += f'|{line}|'
                 self.fii_names.append(line)
             elif process_values and re.match(OPERATION_PATTERN, line):
@@ -64,6 +69,7 @@ class Btg:
                 if op != 'C' and op != 'V':
                     op = 'C'
                 self.fii_op.append(op)
+                import ipdb; ipdb.set_trace()
                 data += f'|{op}|'
                 current_pattern = OPERATION_PATTERN
             # data da transação
@@ -92,12 +98,16 @@ class Btg:
                 if tax_index not in exclude_tax_indexes:
                     self.fii_taxes.append(line)
                 tax_index += 1
+            elif Btg.ACCOUNT_1 == line or Btg.ACCOUNT_2 == line:
+                data += f'|{line}|'
+                self.account = line
 
             if current_pattern and process_values and not re.match(current_pattern, line):
                 logging.debug('############# Stop Processing...')
                 process_values = False
         if not self.fii_values:
             raise ValueError('Values not filled. Check \'process_values\' rules')
+        print(data)
         structured_data = _format_extracted_data(self.fii_date, self.fii_names, self.fii_values, self.fii_quantities, self.fii_taxes, self.fii_op)
         print('### COLLECTED DATA ###')
         logging.info('raw data: %s', data)

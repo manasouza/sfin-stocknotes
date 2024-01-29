@@ -62,11 +62,12 @@ def stock_notes_etl(data: dict):
     else:
       empty_page=data['responses'][page]
       print(f'could not find full text annotation: {empty_page}')
-  logging.debug(page_response_text)
+  logging.info(page_response_text)
 
   structured_data, fii_in_original_ticker = extract_from_text(page_response_text, total_pages)
 
   # TODO: check how to search for registries for stock sale
+  import ipdb; ipdb.set_trace()
 
   # TRANSFORM
   logging.info('processing ETL [transform]')
